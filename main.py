@@ -32,9 +32,23 @@ def get_route(sx, sy, ex, ey):
     url = f"https://api.odsay.com/v1/api/searchPubTransPathT?SX={sx}&SY={sy}&EX={ex}&EY={ey}&apiKey={ODSAY_API_KEY}"
     try:
         res = requests.get(url).json()
+        
+        # ODsay 응답에 에러 코드가 있는지 확인
+        if 'error' in res:
+            print(f"🚨 ODsay API 에러: {res['error'].get('message')}")
+            return 60, 1500
+            
+        # 경로가 없는 경우
+        if 'result' not in res or not res['result'].get('path'):
+            print(f"📍 경로를 찾을 수 없음: ({sx},{sy}) -> ({ex},{ey})")
+            return 60, 1500
+            
         path = res['result']['path'][0]['info']
         return path['totalTime'], path['payment']
-    except: return 60, 1500
+        
+    except Exception as e:
+        print(f"🚨 ODsay 호출 중 예외 발생: {e}")
+        return 60, 1500
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
