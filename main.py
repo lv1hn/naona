@@ -1,12 +1,14 @@
 import os
+import math
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
 
 app = Flask(__name__)
 CORS(app)
 
 KAKAO_API_KEY = os.environ.get("KAKAO_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 def get_coords(address):
     url = "https://dapi.kakao.com/v2/local/search/address.json"
@@ -27,52 +29,31 @@ def get_best_place(x, y):
     except: pass
     return "추천 중심점 근처"
 
-import math
-
 def get_route(sx, sy, ex, ey):
-    import os
-    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-    
-    if not GOOGLE_API_KEY:
-        return 60, 1550
-
+    if not GOOGLE_API_KEY: return 60, 1550
     url = (
         f"https://maps.googleapis.com/maps/api/directions/json?"
         f"origin={sy},{sx}&destination={ey},{ex}&"
         f"mode=transit&departure_time=now&language=ko&key={GOOGLE_API_KEY}"
     )
-
     try:
-        respR = requests.get(url)
-        res = respR.json()
-
+        res = requests.get(url).json()
         if res['status'] == 'OK':
             route = res['routes'][0]['legs'][0]
-            
-            # 1. 소요 시간 계산 (초 -> 분)
             dur_min = route['duration']['value'] // 60
-            
-            # 2. 거리 기반 요금 계산 (m -> km)
             dist_km = route['distance']['value'] / 1000
             
             base_fare = 1550
-            if dist_km <= 10:
-                final_fare = base_fare
-            else:
-                # 10km 초과분에 대해 5km마다 100원 추가 (올림 처리)
+            final_fare = base_fare
+            if dist_km > 10:
                 extra_dist = dist_km - 10
-                extra_fare = math.ceil(extra_dist / 5) * 100
-                final_fare = base_fare + extra_fare
+                final_fare += math.ceil(extra_dist / 5) * 100
             
             print(f"✅ 거리: {dist_km:.1f}km, 시간: {dur_min}분, 요금: {final_fare}원")
             return dur_min, final_fare
-            
         else:
-            print(f"🚨 구글 API 응답 상태 이상: {res['status']}")
             return 60, 1550
-
-    except Exception as e:
-        print(f"🔥 구글 호출 중 오류: {e}")
+    except:
         return 60, 1550
 
 @app.route('/calculate', methods=['POST'])
@@ -91,30 +72,41 @@ def calculate():
 
     if not coords_info: return jsonify({"error": "주소 오류"}), 400
 
-    raw_x = sum(c['x'] * c['w'] for c in coords_info) / total_weight
-    raw_y = sum(c['y'] * c['w'] for c in coords_info) / total_weight
-    place = get_best_place(raw_x, raw_y)
-    tx, ty = raw_x, raw_y
+    tx = sum(c['x'] * c['w'] for c in coords_info) / total_weight
+    ty = sum(c['y'] * c['w'] for c in coords_info) / total_weight
+    place = get_best_place(tx, ty)
     
+    # 여기서부터 반복문 안에서 각 멤버별로 구글 API 호출
+    member_details = []
     costs = []
     for c in coords_info:
-        # 여기가 핵심! 목적지(tx, ty)로 가는데 '각자의 출발점'에서 계산해야 함
-        time, fee = get_route(c['x'], c['y'], tx, ty)
-        costs.append((time * 172) + fee)
+        # 멤버 각자의 좌표(c['x'], c['y'])에서 목적지(tx, ty)까지 호출
+        m_time, m_fee = get_route(c['x'], c['y'], tx, ty)
+        m_cost = (m_time * 172) + m_fee
+        costs.append(m_cost)
+        # 나중에 리포트 쓸 때 꺼내쓰기 위해 저장
+        member_details.append({"time": m_time, "fee": m_fee, "total": m_cost})
         
     avg = sum(costs) / len(costs)
     
-    # 정산 금액 계산 (10원 단위에서 반올림해서 100원 단위로)
     report = []
-    for i, c in enumerate(costs):
-        diff = c - avg
+    for i, det in enumerate(member_details):
+        diff = det['total'] - avg
         status = "더 부담" if diff < 0 else "혜택"
         amount = abs(int(round(diff, -2)))
         report.append(
-            f"멤버 {i+1}: 시간 {time}분 / 교통비 {fee}원 ➔ <b>{status} {amount}원</b>"
+            f"멤버 {i+1}: 시간 {det['time']}분 / 교통비 {det['fee']}원 ➔ <b>{status} {amount}원</b>"
         )
-    return jsonify({"target_place": place, "avg_cost": avg, "report": report, "time": time, "fare": fee})
-    
+
+    # 응답 데이터 (첫 번째 멤버 데이터와 리포트 전송)
+    return jsonify({
+        "target_place": place, 
+        "avg_cost": avg, 
+        "report": report, 
+        "time": member_details[0]['time'], 
+        "fare": member_details[0]['fee']
+    })
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
