@@ -46,26 +46,34 @@ def calculate():
         coords = get_coords(m['address'])
         if not coords: continue
         level = int(m.get('mobility', 3))
-        weight = 95 - (15 * level) # L1 배려 가중치
+        weight = 95 - (15 * level)
         coords_info.append({'x': coords[0], 'y': coords[1], 'w': weight})
         total_weight += weight
 
-    if not coords_info: return jsonify({"error": "주소를 확인해주세요"}), 400
+    if not coords_info: return jsonify({"error": "주소 오류"}), 400
 
     raw_x = sum(c['x'] * c['w'] for c in coords_info) / total_weight
     raw_y = sum(c['y'] * c['w'] for c in coords_info) / total_weight
-    place = get_best_place(raw_x, raw_y)
+    place, tx, ty = get_best_place(raw_x, raw_y)
     
     costs = []
     for c in coords_info:
-        time, fee = get_route(c['x'], c['y'], raw_x, raw_y)
+        # 여기가 핵심! 목적지(tx, ty)로 가는데 '각자의 출발점'에서 계산해야 함
+        time, fee = get_route(c['x'], c['y'], tx, ty)
         costs.append((time * 172) + fee)
         
     avg = sum(costs) / len(costs)
-    report = [f"멤버 {i+1}: {'더 부담' if (c - avg) < 0 else '혜택'} {abs(int(round(c - avg, -2))):,}원" for i, c in enumerate(costs)]
+    
+    # 정산 금액 계산 (10원 단위에서 반올림해서 100원 단위로)
+    report = []
+    for i, c in enumerate(costs):
+        diff = c - avg
+        status = "더 부담" if diff < 0 else "혜택"
+        amount = abs(int(round(diff, -2)))
+        report.append(f"멤버 {i+1}: {status} {amount:,}원")
 
     return jsonify({"target_place": place, "avg_cost": avg, "report": report})
-
+    
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
