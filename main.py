@@ -54,7 +54,8 @@ def calculate():
 
     raw_x = sum(c['x'] * c['w'] for c in coords_info) / total_weight
     raw_y = sum(c['y'] * c['w'] for c in coords_info) / total_weight
-    place, tx, ty = get_best_place(raw_x, raw_y)
+    place = get_best_place(raw_x, raw_y)
+    tx, ty = raw_x, raw_y
     
     costs = []
     for c in coords_info:
