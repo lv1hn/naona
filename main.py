@@ -7,7 +7,6 @@ app = Flask(__name__)
 CORS(app)
 
 KAKAO_API_KEY = os.environ.get("KAKAO_API_KEY")
-ODSAY_API_KEY = os.environ.get("ODSAY_API_KEY")
 
 def get_coords(address):
     url = "https://dapi.kakao.com/v2/local/search/address.json"
@@ -28,47 +27,53 @@ def get_best_place(x, y):
     except: pass
     return "추천 중심점 근처"
 
+import math
+
 def get_route(sx, sy, ex, ey):
-    # 1. 키 존재 여부 검사
-    if not ODSAY_API_KEY:
-        print("🚨 [CRITICAL] ODSAY_API_KEY가 환경 변수에 설정되지 않았습니다!")
-        return 60, 1500
-        
-    url = f"https://api.odsay.com/v1/api/searchPubTransPathT?SX={sx}&SY={sy}&EX={ex}&EY={ey}&apiKey={ODSAY_API_KEY}"
-    headers = {
-        "Referer": "https://naona.onrender.com",
-        "User-Agent": "Mozilla/5.0"
-    }
+    import os
+    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+    
+    if not GOOGLE_API_KEY:
+        return 60, 1550
+
+    url = (
+        f"https://maps.googleapis.com/maps/api/directions/json?"
+        f"origin={sy},{sx}&destination={ey},{ex}&"
+        f"mode=transit&departure_time=now&language=ko&key={GOOGLE_API_KEY}"
+    )
+
     try:
-        respraw = requests.get(url)
-        
-        # 만약 HTTP 상태 코드가 200이 아닐 때 (예: 401 Unauthorized 등)
-        if respraw.status_code != 200:
-            print(f"🚨 ODsay HTTP 에러: {respraw.status_code} / {respraw.text}")
-            return 60, 1500
+        respR = requests.get(url)
+        res = respR.json()
 
-        import json
-        res = json.loads(respraw.text)
-        
-        # 리스트 구조 체크
-        if isinstance(res, list) and len(res) > 0:
-            # 리스트 첫 칸에 에러가 담겨 오는 경우
-            if 'error' in res[0]:
-                msg = res[0]['error'].get('message', '알 수 없는 에러')
-                print(f"🚨 ODsay API 응답 에러: {msg}")
-                return 60, 1500
-
-            # 정상 경로 파싱
-            if 'path' in res[0]:
-                info = res[0]['path'][0]['info']
-                return info['totalTime'], info['payment']
-
-        print(f"📍 예상치 못한 응답 구조: {res}")
-        return 60, 1500
+        if res['status'] == 'OK':
+            route = res['routes'][0]['legs'][0]
+            
+            # 1. 소요 시간 계산 (초 -> 분)
+            dur_min = route['duration']['value'] // 60
+            
+            # 2. 거리 기반 요금 계산 (m -> km)
+            dist_km = route['distance']['value'] / 1000
+            
+            base_fare = 1550
+            if dist_km <= 10:
+                final_fare = base_fare
+            else:
+                # 10km 초과분에 대해 5km마다 100원 추가 (올림 처리)
+                extra_dist = dist_km - 10
+                extra_fare = math.ceil(extra_dist / 5) * 100
+                final_fare = base_fare + extra_fare
+            
+            print(f"✅ 거리: {dist_km:.1f}km, 시간: {dur_min}분, 요금: {final_fare}원")
+            return dur_min, final_fare
+            
+        else:
+            print(f"🚨 구글 API 응답 상태 이상: {res['status']}")
+            return 60, 1550
 
     except Exception as e:
-        print(f"🔥 get_route 실행 중 예외 발생: {e}")
-        return 60, 1500
+        print(f"🔥 구글 호출 중 오류: {e}")
+        return 60, 1550
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
