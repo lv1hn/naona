@@ -71,8 +71,9 @@ def calculate():
         diff = c - avg
         status = "더 부담" if diff < 0 else "혜택"
         amount = abs(int(round(diff, -2)))
-        report.append(f"멤버 {i+1}: {status} {amount:,}원")
-
+        report.append(
+            f"멤버 {i+1}: 시간 {time}분 / 교통비 {fee}원 ➔ <b>{status} {amount}원</b>"
+        )
     return jsonify({"target_place": place, "avg_cost": avg, "report": report})
     
 if __name__ == '__main__':
