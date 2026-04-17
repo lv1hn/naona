@@ -113,7 +113,7 @@ def calculate():
         report.append(
             f"멤버 {i+1}: 시간 {time}분 / 교통비 {fee}원 ➔ <b>{status} {amount}원</b>"
         )
-    return jsonify({"target_place": place, "avg_cost": avg, "report": report, "time": dur_min, "fare": final_fare})
+    return jsonify({"target_place": place, "avg_cost": avg, "report": report, "time": time, "fare": fee})
     
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
