@@ -35,7 +35,9 @@ def get_route(sx, sy, ex, ey):
         return 60, 1500
         
     url = f"https://api.odsay.com/v1/api/searchPubTransPathT?SX={sx}&SY={sy}&EX={ex}&EY={ey}&apiKey={ODSAY_API_KEY}"
-    
+    headers = {
+        "Referer": "https://naona.onrender.com"
+    }
     try:
         respraw = requests.get(url)
         
