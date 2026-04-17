@@ -76,7 +76,7 @@ def calculate():
     for m in members:
         x, y = get_coords(m['address'])
         # 기동력 기반 가중치 (L1=80 ~ L5=20)
-        weight = 100 - int(m['mobility_score']) 
+        weight = 95 - 15 * int(m['mobility']) 
         coords_info.append({'x': x, 'y': y, 'w': weight})
         total_weight += weight
 
