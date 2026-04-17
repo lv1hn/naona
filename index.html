@@ -62,7 +62,8 @@
                 const result = await response.json();
                 renderResult(result);
             } catch(e) {
-                alert("서버 연결 실패 (아직 서버가 없거나 주소가 틀림)");
+                alert("에러 내용: " + e.message);
+                console.error(e);
             }
         }
 
