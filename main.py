@@ -105,6 +105,7 @@ def calculate():
 
     return jsonify({
         "target_place": place_name,
+        "avg_cost": int(avg_cost), # 평균 비용 추가!
         "report": report
     })
 
