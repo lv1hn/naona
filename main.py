@@ -11,10 +11,31 @@ KAKAO_API_KEY = os.environ.get("KAKAO_API_KEY")
 ODSAY_API_KEY = os.environ.get("ODSAY_API_KEY")
 
 def get_coords(address):
-    url = f"https://dapi.kakao.com/v2/local/search/address.json?query={address}"
+    # 1. 키가 잘 불러와졌는지 먼저 확인
+    if not KAKAO_API_KEY:
+        print("🚨 에러: Render 환경변수 KAKAO_API_KEY를 못 읽어왔어!")
+        return None
+
+    url = "https://dapi.kakao.com/v2/local/search/address.json"
     headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
-    res = requests.get(url, headers=headers).json()
-    return float(res['documents'][0]['x']), float(res['documents'][0]['y'])
+    params = {"query": address}
+    
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        res = response.json()
+        
+        # 2. 카카오가 보낸 진짜 응답을 로그에 찍기
+        print(f"📡 카카오 응답 데이터: {res}")
+        
+        if 'documents' not in res:
+            return None
+        if not res['documents']:
+            return None
+            
+        return float(res['documents'][0]['x']), float(res['documents'][0]['y'])
+    except Exception as e:
+        print(f"🚨 네트워크 에러 발생: {e}")
+        return None
 
 def get_best_meeting_place(x, y):
     """
