@@ -29,25 +29,42 @@ def get_best_place(x, y):
     return "추천 중심점 근처"
 
 def get_route(sx, sy, ex, ey):
+    # 1. 키 존재 여부 검사
+    if not ODSAY_API_KEY:
+        print("🚨 [CRITICAL] ODSAY_API_KEY가 환경 변수에 설정되지 않았습니다!")
+        return 60, 1500
+        
     url = f"https://api.odsay.com/v1/api/searchPubTransPathT?SX={sx}&SY={sy}&EX={ex}&EY={ey}&apiKey={ODSAY_API_KEY}"
+    
     try:
-        res = requests.get(url).json()
+        respraw = requests.get(url)
         
-        # ODsay 응답에 에러 코드가 있는지 확인
-        if 'error' in res:
-            print(f"🚨 ODsay API 에러: {res['error'].get('message')}")
+        # 만약 HTTP 상태 코드가 200이 아닐 때 (예: 401 Unauthorized 등)
+        if respraw.status_code != 200:
+            print(f"🚨 ODsay HTTP 에러: {respraw.status_code} / {respraw.text}")
             return 60, 1500
-            
-        # 경로가 없는 경우
-        if 'result' not in res or not res['result'].get('path'):
-            print(f"📍 경로를 찾을 수 없음: ({sx},{sy}) -> ({ex},{ey})")
-            return 60, 1500
-            
-        path = res['result']['path'][0]['info']
-        return path['totalTime'], path['payment']
+
+        import json
+        res = json.loads(respraw.text)
         
+        # 리스트 구조 체크
+        if isinstance(res, list) and len(res) > 0:
+            # 리스트 첫 칸에 에러가 담겨 오는 경우
+            if 'error' in res[0]:
+                msg = res[0]['error'].get('message', '알 수 없는 에러')
+                print(f"🚨 ODsay API 응답 에러: {msg}")
+                return 60, 1500
+
+            # 정상 경로 파싱
+            if 'path' in res[0]:
+                info = res[0]['path'][0]['info']
+                return info['totalTime'], info['payment']
+
+        print(f"📍 예상치 못한 응답 구조: {res}")
+        return 60, 1500
+
     except Exception as e:
-        print(f"🚨 ODsay 호출 중 예외 발생: {e}")
+        print(f"🔥 get_route 실행 중 예외 발생: {e}")
         return 60, 1500
 
 @app.route('/calculate', methods=['POST'])
