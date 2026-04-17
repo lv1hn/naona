@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약속 장소 & 정산 비율 계산기</title>
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 15px; shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .member { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .addr-btn { width: 100%; padding: 10px; margin: 10px 0; cursor: pointer; text-align: left; }
+        .res-box { display: none; margin-top: 20px; padding: 15px; background: #eef; border-radius: 10px; }
+        button.main-btn { width: 100%; padding: 15px; background: #007AFF; color: white; border: none; border-radius: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📍 약속 장소 찾기</h2>
+        <div id="member-inputs"></div>
+        <button class="main-btn" onclick="sendData()">결과 확인하기</button>
+        <div id="res-box" class="res-box"></div>
+    </div>
+
+    <script>
+        const MEMBER_COUNT = 3;
+        const container = document.getElementById('member-inputs');
+
+        for(let i=1; i<=MEMBER_COUNT; i++) {
+            container.innerHTML += `
+                <div class="member">
+                    <strong>멤버 ${i}</strong>
+                    <select id="mob-${i}"><option value="1">L1</option><option value="2">L2</option><option value="3" selected>L3</option><option value="4">L4</option><option value="5">L5</option></select>
+                    <button class="addr-btn" id="addr-${i}" onclick="searchAddr(${i})">주소 검색...</button>
+                </div>`;
+        }
+
+        function searchAddr(id) {
+            new daum.Postcode({
+                oncomplete: function(data) { document.getElementById(`addr-${id}`).innerText = data.address; }
+            }).open();
+        }
+
+        async function sendData() {
+            const members = [];
+            for(let i=1; i<=MEMBER_COUNT; i++) {
+                members.push({
+                    address: document.getElementById(`addr-${i}`).innerText,
+                    mobility: document.getElementById(`mob-${i}`).value
+                });
+            }
+
+            // TODO: Render 서버 주소 생성 후 URL 교체 필요
+            const SERVER_URL = "https://your-app.onrender.com/calculate"; 
+            
+            try {
+                const response = await fetch(SERVER_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ members })
+                });
+                const result = await response.json();
+                renderResult(result);
+            } catch(e) {
+                alert("서버 연결 실패 (아직 서버가 없거나 주소가 틀림)");
+            }
+        }
+
+        function renderResult(data) {
+            const box = document.getElementById('res-box');
+            box.style.display = 'block';
+            box.innerHTML = `<h4>📊 정산 결과</h4>` + data.report.map(line => `<p>${line}</p>`).join('');
+        }
+    </script>
+</body>
+</html>
