@@ -101,11 +101,14 @@
                 const res = await response.json();
                 
                 let html = `<h2>📍 추천: <span style="color:#007AFF">${res.target_place}</span></h2>`;
-                html += `<p>💰 1인당 평균 비용: ${Math.round(res.avg_cost).toLocaleString()}원</p>`;
-                html += `<h3>📋 정산 리포트</h3><ul>`;
-                res.report.forEach(r => { html += `<li>${r}</li>`; });
-                html += `</ul>`;
-                
+                html += `<p style="font-size: 0.9em; color: #666;">전체 평균 기준: ${Math.round(res.avg_cost).toLocaleString()}원</p>`;
+                html += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">`;
+                html += `<h3>💰 정산 리포트</h3><ul style="line-height: 2.2; list-style: none; padding-left: 0;">`;
+        
+                res.report.forEach(r => { 
+                    html += `<li style="background: #fff; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid #eee;">${r}</li>`; 
+                });
+                        
                 resBox.innerHTML = html;
             } catch(e) {
                 resBox.innerHTML = "❌ 서버 연결에 실패했습니다.";
