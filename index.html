@@ -68,11 +68,13 @@
         }
 
         function renderResult(result) {
-            const resultDiv = document.getElementById('result'); // 결과를 보여줄 div
+            const resultDiv = document.getElementById('res_box'); // 결과를 보여줄 div
             
             // 1. 만날 장소 이름 출력
             let html = `<h2>📍 추천 장소: <span style="color: #ff5722;">${result.target_place}</span></h2>`;
-            
+            if(result.avg_cost) {
+                html += `<p>💰 평균 이동 비용: <strong>${Math.round(result.avg_cost).toLocaleString()}원</strong></p>`;
+            }
             html += `<h3>💰 정산 리포트</h3><ul>`;
             
             // 2. 서버에서 보낸 report 배열을 하나씩 꺼내서 출력
