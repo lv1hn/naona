@@ -28,7 +28,7 @@
     </div>
 
     <script>
-        // 초기 멤버 설정 (1, 2번은 고정)
+        // 초기 멤버 설정
         let members = [
             { id: Date.now(), addr: "주소 검색...", mob: "3" },
             { id: Date.now() + 1, addr: "주소 검색...", mob: "3" }
@@ -90,32 +90,41 @@
             }
 
             resBox.style.display = 'block';
-            resBox.innerHTML = "⌛ 계산 중...";
+            resBox.innerHTML = "⌛ 길찾기 데이터 계산 중...";
 
             try {
                 const response = await fetch("https://naona.onrender.com/calculate", {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ members: members.map(m => ({ address: m.addr, mobility: m.mob })) })
+                    body: JSON.stringify({ 
+                        members: members.map(m => ({ address: m.addr, mobility: m.mob })) 
+                    })
                 });
+                
                 const res = await response.json();
                 
+                // 결과 영역 렌더링 시작
                 let html = `<h2>📍 추천: <span style="color:#007AFF">${res.target_place}</span></h2>`;
-                html += `<p style="font-size: 0.9em; color: #666;">전체 평균 기준: ${Math.round(res.avg_cost).toLocaleString()}원</p>`;
+                html += `<p style="font-size: 0.9em; color: #666;">평균 이동 비용: ${Math.round(res.avg_cost).toLocaleString()}원</p>`;
                 html += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">`;
-                html += `<h3>💰 정산 리포트</h3><ul style="line-height: 2.2; list-style: none; padding-left: 0;">`;
+                html += `<h3>💰 정산 리포트</h3><ul style="line-height: 1.6; list-style: none; padding-left: 0;">`;
         
+                // 파이썬에서 보낸 report 배열을 순서대로 출력
                 res.report.forEach(r => { 
-                    html += `<li style="background: #fff; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid #eee;">${r}</li>`; 
+                    html += `
+                    <li style="background: #fff; margin-bottom: 8px; padding: 12px; border-radius: 8px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        ${r}
+                    </li>`; 
                 });
-                        
+                html += `</ul>`;
+                                    
                 resBox.innerHTML = html;
             } catch(e) {
-                resBox.innerHTML = "❌ 서버 연결에 실패했습니다.";
+                console.error(e);
+                resBox.innerHTML = "❌ 서버 연결 실패 또는 경로 검색 오류";
             }
         }
 
-        // 페이지 로드 시 실행
         window.onload = render;
     </script>
 </body>
