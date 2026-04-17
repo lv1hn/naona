@@ -67,10 +67,23 @@
             }
         }
 
-        function renderResult(data) {
-            const box = document.getElementById('res-box');
-            box.style.display = 'block';
-            box.innerHTML = `<h4>📊 정산 결과</h4>` + data.report.map(line => `<p>${line}</p>`).join('');
+        function renderResult(result) {
+            const resultDiv = document.getElementById('result'); // 결과를 보여줄 div
+            
+            // 1. 만날 장소 이름 출력
+            let html = `<h2>📍 추천 장소: <span style="color: #ff5722;">${result.target_place}</span></h2>`;
+            
+            html += `<h3>💰 정산 리포트</h3><ul>`;
+            
+            // 2. 서버에서 보낸 report 배열을 하나씩 꺼내서 출력
+            result.report.forEach(item => {
+                html += `<li>${item}</li>`;
+            });
+            
+            html += `</ul>`;
+            
+            // 3. 실제 화면에 반영
+            resultDiv.innerHTML = html;
         }
     </script>
 </body>
